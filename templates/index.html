@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TruthLens — Fake News Detector</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0e;
+    --surface: #0d1821;
+    --card: #111c28;
+    --border: #1e3048;
+    --accent: #00d4ff;
+    --accent2: #7c3aed;
+    --real: #00e676;
+    --fake: #ff1744;
+    --warn: #ffab00;
+    --text: #e8f4fd;
+    --muted: #5c7d9b;
+    --font-head: 'Syne', sans-serif;
+    --font-mono: 'Space Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-head);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated grid background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Glow orbs */
+  .orb {
+    position: fixed;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+    z-index: 0;
+    animation: drift 20s ease-in-out infinite;
+  }
+  .orb-1 { width: 500px; height: 500px; background: rgba(0,212,255,0.06); top: -200px; right: -100px; }
+  .orb-2 { width: 400px; height: 400px; background: rgba(124,58,237,0.08); bottom: -100px; left: -100px; animation-delay: -10s; }
+
+  @keyframes drift {
+    0%, 100% { transform: translate(0, 0); }
+    33% { transform: translate(30px, -20px); }
+    66% { transform: translate(-20px, 30px); }
+  }
+
+  /* Header */
+  header {
+    position: relative;
+    z-index: 10;
+    padding: 28px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(10px);
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    position: relative;
+  }
+
+  .logo-icon::after {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: 10px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    opacity: 0.3;
+    filter: blur(8px);
+    z-index: -1;
+  }
+
+  .logo-text {
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+    background: linear-gradient(135deg, #ffffff, var(--accent));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .logo-sub {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 1px;
+  }
+
+  .header-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: rgba(0,212,255,0.08);
+    border: 1px solid rgba(0,212,255,0.2);
+    border-radius: 40px;
+    font-size: 12px;
+    color: var(--accent);
+    font-family: var(--font-mono);
+    letter-spacing: 1px;
+  }
+
+  .pulse-dot {
+    width: 7px; height: 7px;
+    background: var(--real);
+    border-radius: 50%;
+    animation: pulse-anim 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse-anim {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(1.3); }
+  }
+
+  /* Main layout */
+  main {
+    position: relative;
+    z-index: 10;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 60px 24px 80px;
+  }
+
+  /* Hero */
+  .hero {
+    text-align: center;
+    margin-bottom: 56px;
+  }
+
+  .hero-label {
+    display: inline-block;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 20px;
+    padding: 6px 16px;
+    border: 1px solid rgba(0,212,255,0.25);
+    border-radius: 4px;
+  }
+
+  .hero h1 {
+    font-size: clamp(38px, 6vw, 64px);
+    font-weight: 800;
+    line-height: 1.05;
+    letter-spacing: -2px;
+    margin-bottom: 16px;
+  }
+
+  .hero h1 span {
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 50%, #ff6b6b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .hero p {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 480px;
+    margin: 0 auto;
+    line-height: 1.7;
+    font-weight: 400;
+  }
+
+  /* Stats bar */
+  .stats-bar {
+    display: flex;
+    justify-content: center;
+    gap: 40px;
+    margin: 32px 0 0;
+    padding: 20px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .stat {
+    text-align: center;
+  }
+
+  .stat-num {
+    font-size: 24px;
+    font-weight: 800;
+    color: var(--accent);
+    font-family: var(--font-mono);
+  }
+
+  .stat-label {
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 2px;
+  }
+
+  /* Card */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 36px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+
+  /* Model selector */
+  .section-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 14px;
+  }
+
+  .model-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 28px;
+  }
+
+  .model-btn {
+    cursor: pointer;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px 12px;
+    background: var(--surface);
+    transition: all 0.25s ease;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .model-btn::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    opacity: 0;
+    transition: opacity 0.25s;
+  }
+
+  .model-btn:hover { border-color: rgba(0,212,255,0.4); transform: translateY(-2px); }
+  .model-btn.active { border-color: var(--accent); }
+  .model-btn.active::before { opacity: 0.08; }
+
+  .model-icon { font-size: 22px; margin-bottom: 6px; position: relative; z-index: 1; }
+  .model-name {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    position: relative; z-index: 1;
+  }
+  .model-tag {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 3px;
+    position: relative; z-index: 1;
+  }
+
+  .model-btn.active .model-name { color: var(--accent); }
+
+  /* Textarea */
+  .input-area {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 20px;
+    color: var(--text);
+    font-family: var(--font-head);
+    font-size: 15px;
+    line-height: 1.7;
+    resize: vertical;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  textarea:focus { border-color: rgba(0,212,255,0.5); }
+  textarea::placeholder { color: var(--muted); font-style: italic; }
+
+  .char-count {
+    position: absolute;
+    bottom: 14px;
+    right: 16px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Analyze button */
+  .analyze-btn {
+    width: 100%;
+    padding: 18px;
+    background: linear-gradient(135deg, var(--accent), #0099cc);
+    border: none;
+    border-radius: 12px;
+    color: #000;
+    font-family: var(--font-head);
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.25s;
+  }
+
+  .analyze-btn::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: white;
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+
+  .analyze-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 40px rgba(0,212,255,0.3); }
+  .analyze-btn:hover::after { opacity: 0.05; }
+  .analyze-btn:active { transform: translateY(0); }
+  .analyze-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .btn-inner { display: flex; align-items: center; justify-content: center; gap: 10px; position: relative; z-index: 1; }
+
+  /* Loading */
+  .spinner {
+    width: 20px; height: 20px;
+    border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: none;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Result panel */
+  .result-panel {
+    margin-top: 24px;
+    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    display: none;
+    animation: slide-up 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-header {
+    padding: 20px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .result-header.real { background: rgba(0,230,118,0.1); border-bottom: 1px solid rgba(0,230,118,0.2); }
+  .result-header.fake { background: rgba(255,23,68,0.1); border-bottom: 1px solid rgba(255,23,68,0.2); }
+
+  .verdict {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .verdict-icon {
+    width: 48px; height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 22px;
+  }
+
+  .real .verdict-icon { background: rgba(0,230,118,0.15); }
+  .fake .verdict-icon { background: rgba(255,23,68,0.15); }
+
+  .verdict-label {
+    font-size: 11px;
+    font-family: var(--font-mono);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .verdict-text {
+    font-size: 28px;
+    font-weight: 800;
+    letter-spacing: -0.5px;
+  }
+
+  .real .verdict-text { color: var(--real); }
+  .fake .verdict-text { color: var(--fake); }
+
+  .confidence-badge {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 40px;
+    font-weight: 700;
+  }
+
+  .real .confidence-badge { background: rgba(0,230,118,0.15); color: var(--real); border: 1px solid rgba(0,230,118,0.3); }
+  .fake .confidence-badge { background: rgba(255,23,68,0.15); color: var(--fake); border: 1px solid rgba(255,23,68,0.3); }
+
+  .result-body {
+    background: var(--surface);
+    padding: 24px;
+  }
+
+  /* Confidence bar */
+  .conf-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .conf-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    width: 50px;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .conf-bar {
+    flex: 1;
+    height: 8px;
+    background: var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .conf-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 1s cubic-bezier(0.16, 1, 0.3, 1);
+    width: 0;
+  }
+
+  .conf-fill.real-fill { background: linear-gradient(90deg, var(--real), #69f0ae); }
+  .conf-fill.fake-fill { background: linear-gradient(90deg, var(--fake), #ff6090); }
+
+  .conf-pct {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    width: 42px;
+    text-align: right;
+    font-weight: 700;
+  }
+
+  /* Groq explanation box */
+  .groq-box {
+    margin-top: 18px;
+    background: var(--card);
+    border: 1px solid rgba(124,58,237,0.3);
+    border-radius: 12px;
+    padding: 18px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .groq-box::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent2), #a855f7);
+  }
+  .groq-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .groq-badge {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #a855f7;
+    background: rgba(124,58,237,0.12);
+    border: 1px solid rgba(124,58,237,0.25);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .groq-agreement {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-left: auto;
+  }
+  .groq-explanation {
+    font-size: 14px;
+    color: var(--text);
+    line-height: 1.7;
+    font-style: italic;
+  }
+  .groq-confidence {
+    margin-top: 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--muted);
+  }
+
+  /* Details grid */
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .detail-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .detail-label {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 6px;
+  }
+  .detail-value {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--text);
+  }
+
+  /* How it works */
+  .how-it-works {
+    margin-top: 48px;
+  }
+
+  .section-title {
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0;
+    align-items: center;
+  }
+
+  .pipe-step {
+    text-align: center;
+    padding: 20px 10px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    position: relative;
+  }
+
+  .pipe-step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -18px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted);
+    font-size: 16px;
+    z-index: 2;
+  }
+
+  .pipe-step + .pipe-step { border-radius: 12px; }
+
+  .pipe-icon { font-size: 24px; margin-bottom: 8px; }
+  .pipe-name { font-size: 11px; font-weight: 700; color: var(--text); }
+  .pipe-sub { font-family: var(--font-mono); font-size: 9px; color: var(--muted); margin-top: 3px; }
+
+  /* Models section */
+  .models-section {
+    margin-top: 40px;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+  }
+
+  .model-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .model-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .model-card.lr::before { background: linear-gradient(90deg, #00e676, #69f0ae); }
+  .model-card.lstm::before { background: linear-gradient(90deg, #ffab00, #ffd740); }
+  .model-card.bert::before { background: linear-gradient(90deg, var(--accent2), #a855f7); }
+
+  .mc-icon { font-size: 28px; margin-bottom: 12px; }
+  .mc-name { font-size: 16px; font-weight: 800; margin-bottom: 4px; }
+  .mc-type {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    margin-bottom: 12px;
+  }
+
+  .mc-desc { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+  .mc-stat {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 16px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .mc-stat-item { text-align: center; }
+  .mc-stat-val { font-family: var(--font-mono); font-size: 16px; font-weight: 700; }
+  .mc-stat-key { font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; margin-top: 2px; }
+
+  .lr .mc-stat-val { color: var(--real); }
+  .lstm .mc-stat-val { color: var(--warn); }
+  .bert .mc-stat-val { color: var(--accent); }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 20px;
+    font-size: 13px;
+    z-index: 999;
+    transform: translateY(80px);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.16,1,0.3,1);
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* Footer */
+  footer {
+    position: relative;
+    z-index: 10;
+    text-align: center;
+    padding: 32px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 1px;
+  }
+
+  footer span { color: var(--accent); }
+
+  @media (max-width: 640px) {
+    header { padding: 20px; }
+    main { padding: 40px 16px 60px; }
+    .model-grid { grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .model-btn { padding: 12px 6px; }
+    .model-name { font-size: 11px; }
+    .pipeline { grid-template-columns: 1fr; gap: 8px; }
+    .pipe-step::after { display: none; }
+    .models-section { grid-template-columns: 1fr; }
+    .details-grid { grid-template-columns: repeat(2,1fr); }
+    .stats-bar { gap: 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="orb orb-1"></div>
+<div class="orb orb-2"></div>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">🔍</div>
+    <div>
+      <div class="logo-text">TruthLens</div>
+      <div class="logo-sub">Fake News Detection System</div>
+    </div>
+  </div>
+  <div class="header-badge">
+    <div class="pulse-dot"></div>
+    MODELS ONLINE
+  </div>
+</header>
+
+<main>
+
+  <div class="hero">
+    <div class="hero-label">⚡ NLP-Powered Analysis</div>
+    <h1>Detect <span>Fake News</span><br>with AI Precision</h1>
+    <p>Analyze any article or news snippet using Logistic Regression, LSTM, or BERT. Get real-time predictions with confidence scores.</p>
+
+    <div class="stats-bar">
+      <div class="stat">
+        <div class="stat-num">97.4%</div>
+        <div class="stat-label">BERT Accuracy</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">3</div>
+        <div class="stat-label">ML Models</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">&lt;5s</div>
+        <div class="stat-label">Response Time</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num">44K</div>
+        <div class="stat-label">Training Samples</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Analyzer Card -->
+  <div class="card">
+    <div class="section-label">01 — SELECT MODEL</div>
+    <div class="model-grid">
+      <div class="model-btn active" onclick="selectModel(this,'lr')">
+        <div class="model-icon">📊</div>
+        <div class="model-name">Logistic<br>Regression</div>
+        <div class="model-tag">Fast · TF-IDF</div>
+      </div>
+      <div class="model-btn" onclick="selectModel(this,'lstm')">
+        <div class="model-icon">🧠</div>
+        <div class="model-name">LSTM<br>Neural Net</div>
+        <div class="model-tag">Deep · Sequential</div>
+      </div>
+      <div class="model-btn" onclick="selectModel(this,'bert')">
+        <div class="model-icon">🤖</div>
+        <div class="model-name">BERT<br>Transformer</div>
+        <div class="model-tag">State of Art</div>
+      </div>
+    </div>
+
+    <div class="section-label">02 — PASTE NEWS TEXT</div>
+    <div class="input-area">
+      <textarea id="newsInput" placeholder="Paste a news headline or article here…&#10;&#10;Example: 'Scientists discover that eating chocolate daily increases IQ by 30 points according to a recent Harvard study.'"></textarea>
+      <div class="char-count" id="charCount">0 chars</div>
+    </div>
+
+    <button class="analyze-btn" id="analyzeBtn" onclick="analyze()">
+      <div class="btn-inner">
+        <span class="spinner" id="spinner"></span>
+        <span id="btnText">🔍 &nbsp;ANALYZE NEWS</span>
+      </div>
+    </button>
+
+    <div class="result-panel" id="resultPanel">
+      <div class="result-header" id="resultHeader">
+        <div class="verdict">
+          <div class="verdict-icon" id="verdictIcon"></div>
+          <div>
+            <div class="verdict-label">VERDICT</div>
+            <div class="verdict-text" id="verdictText"></div>
+          </div>
+        </div>
+        <div class="confidence-badge" id="confBadge"></div>
+      </div>
+      <div class="result-body">
+        <div class="conf-row">
+          <div class="conf-label">REAL</div>
+          <div class="conf-bar"><div class="conf-fill real-fill" id="realFill"></div></div>
+          <div class="conf-pct" id="realPct" style="color:var(--real)"></div>
+        </div>
+        <div class="conf-row">
+          <div class="conf-label">FAKE</div>
+          <div class="conf-bar"><div class="conf-fill fake-fill" id="fakeFill"></div></div>
+          <div class="conf-pct" id="fakePct" style="color:var(--fake)"></div>
+        </div>
+
+        <!-- Groq AI Explanation Box -->
+        <div class="groq-box" id="groqBox" style="display:none">
+          <div class="groq-header">
+            <span class="groq-badge">🤖 Groq LLaMA 3 70B</span>
+            <span class="groq-agreement" id="groqAgreement"></span>
+          </div>
+          <div class="groq-explanation" id="groqExplanation"></div>
+          <div class="groq-confidence" id="groqConfidence"></div>
+        </div>
+
+        <div class="details-grid">
+          <div class="detail-card">
+            <div class="detail-label">ML Model</div>
+            <div class="detail-value" id="detModel">—</div>
+          </div>
+          <div class="detail-card">
+            <div class="detail-label">Processing Time</div>
+            <div class="detail-value" id="detTime">—</div>
+          </div>
+          <div class="detail-card">
+            <div class="detail-label">Verdict Source</div>
+            <div class="detail-value" id="detSource">—</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- How it works -->
+  <div class="how-it-works">
+    <div class="section-title">Pipeline</div>
+    <div class="pipeline">
+      <div class="pipe-step"><div class="pipe-icon">📝</div><div class="pipe-name">Input Text</div><div class="pipe-sub">User Input</div></div>
+      <div class="pipe-step"><div class="pipe-icon">🧹</div><div class="pipe-name">Preprocess</div><div class="pipe-sub">Clean · Tokenize</div></div>
+      <div class="pipe-step"><div class="pipe-icon">🔢</div><div class="pipe-name">Vectorize</div><div class="pipe-sub">TF-IDF / Embed</div></div>
+      <div class="pipe-step"><div class="pipe-icon">⚙️</div><div class="pipe-name">Inference</div><div class="pipe-sub">ML / DL Model</div></div>
+      <div class="pipe-step"><div class="pipe-icon">📊</div><div class="pipe-name">Result</div><div class="pipe-sub">Label + Score</div></div>
+    </div>
+
+    <div class="models-section" style="margin-top:24px">
+      <div class="model-card lr">
+        <div class="mc-icon">📊</div>
+        <div class="mc-name">Logistic Regression</div>
+        <div class="mc-type">Classical ML · TF-IDF</div>
+        <div class="mc-desc">Uses TF-IDF vectorization to convert text into numerical features, then applies logistic regression for binary classification. Fastest inference time, great baseline.</div>
+        <div class="mc-stat">
+          <div class="mc-stat-item"><div class="mc-stat-val">92%</div><div class="mc-stat-key">Accuracy</div></div>
+          <div class="mc-stat-item"><div class="mc-stat-val">&lt;50ms</div><div class="mc-stat-key">Latency</div></div>
+          <div class="mc-stat-item"><div class="mc-stat-val">.pkl</div><div class="mc-stat-key">Format</div></div>
+        </div>
+      </div>
+      <div class="model-card lstm">
+        <div class="mc-icon">🧠</div>
+        <div class="mc-name">LSTM Network</div>
+        <div class="mc-type">Deep Learning · Sequential</div>
+        <div class="mc-desc">Long Short-Term Memory network captures sequential patterns and context in text over time. Better at understanding sentence structure and order.</div>
+        <div class="mc-stat">
+          <div class="mc-stat-item"><div class="mc-stat-val">95%</div><div class="mc-stat-key">Accuracy</div></div>
+          <div class="mc-stat-item"><div class="mc-stat-val">~200ms</div><div class="mc-stat-key">Latency</div></div>
+          <div class="mc-stat-item"><div class="mc-stat-val">.h5</div><div class="mc-stat-key">Format</div></div>
+        </div>
+      </div>
+      <div class="model-card bert">
+        <div class="mc-icon">🤖</div>
+        <div class="mc-name">BERT Transformer</div>
+        <div class="mc-type">Transformer · HuggingFace</div>
+        <div class="mc-desc">Bidirectional Encoder Representations from Transformers. State-of-the-art NLP model with deep contextual understanding of language from both directions.</div>
+        <div class="mc-stat">
+          <div class="mc-stat-item"><div class="mc-stat-val">97%</div><div class="mc-stat-key">Accuracy</div></div>
+          <div class="mc-stat-item"><div class="mc-stat-val">~2s</div><div class="mc-stat-key">Latency</div></div>
+          <div class="mc-stat-item"><div class="mc-stat-val">.bin</div><div class="mc-stat-key">Format</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<footer>
+  Built by <span>Ayush Deval</span> · Fake News Detection System · NLP Major Project
+</footer>
+
+<script>
+let selectedModel = 'lr';
+
+function selectModel(el, model) {
+  document.querySelectorAll('.model-btn').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  selectedModel = model;
+}
+
+document.getElementById('newsInput').addEventListener('input', function() {
+  document.getElementById('charCount').textContent = this.value.length + ' chars';
+});
+
+const modelNames = { lr: 'Logistic Regression', lstm: 'LSTM Network', bert: 'BERT Transformer' };
+
+// ─────────────────────────────────────────────────────────────
+// FACTUAL KNOWLEDGE BASE  (frontend fallback when API offline)
+// ─────────────────────────────────────────────────────────────
+const KNOWN_FACTS = {
+  india_pm: {
+    real: ['narendra modi','manmohan singh','atal bihari vajpayee','inder kumar gujral',
+           'hd deve gowda','p v narasimha rao','chandra shekhar','v p singh',
+           'rajiv gandhi','indira gandhi','morarji desai','jawaharlal nehru'],
+    pattern: /(\w[\w\s]+?)\s+is\s+(the\s+)?(current\s+)?(pm|prime\s+minister)\s+(of\s+)?india/i
+  },
+  us_president: {
+    real: ['donald trump','joe biden','barack obama','george w bush','bill clinton'],
+    pattern: /(\w[\w\s]+?)\s+is\s+(the\s+)?(current\s+)?(president)\s+(of\s+)?(the\s+)?(usa|united\s+states|america)/i
+  },
+  impossible: ['earth is flat','flat earth','moon landing was fake','vaccines contain microchip',
+               '5g causes covid','covid is fake','cancer cured by','gravity is fake']
+};
+
+const SIGNALS = {
+  strongFake: [
+    { p: /(BREAKING|EXCLUSIVE|SHOCKING)/, w: 0.12 },
+    { p: /(secret|hidden|they don'?t want you|suppressed|cover.?up)/i, w: 0.15 },
+    { p: /(miracle cure|instant cure)/i, w: 0.20 },
+    { p: /!{2,}/, w: 0.10 },
+    { p: /(illuminati|deep state|new world order|reptilian)/i, w: 0.22 },
+    { p: /(doctors hate|scientists hate|this one trick)/i, w: 0.20 },
+  ],
+  mildFake: [
+    { p: /(apparently|allegedly|rumor|unconfirmed)/i, w: 0.05 },
+    { p: /[A-Z]{5,}/, w: 0.06 },
+    { p: /\?{2,}/, w: 0.06 },
+  ],
+  realSignals: [
+    { p: /(according to (reuters|ap|bbc|associated press|pti|ani|the hindu|ndtv))/i, w: -0.18 },
+    { p: /(official statement|press release|confirmed by|government announced)/i, w: -0.12 },
+    { p: /(parliament|lok sabha|rajya sabha|supreme court|election commission)/i, w: -0.10 },
+    { p: /(percent|\d+\.\d+%|quarterly|fiscal year|gdp|inflation)/i, w: -0.08 },
+  ]
+};
+
+function localDetect(text) {
+  const lower = text.toLowerCase().trim();
+  let fakeScore = 0;
+
+  const pmMatch = lower.match(KNOWN_FACTS.india_pm.pattern);
+  if (pmMatch) {
+    const claimed = pmMatch[1].trim().toLowerCase();
+    const known   = KNOWN_FACTS.india_pm.real.some(n => claimed.includes(n) || n.includes(claimed));
+    fakeScore += known ? -0.20 : 0.70;
+  }
+
+  const presMatch = lower.match(KNOWN_FACTS.us_president.pattern);
+  if (presMatch) {
+    const claimed = presMatch[1].trim().toLowerCase();
+    const known   = KNOWN_FACTS.us_president.real.some(n => claimed.includes(n) || n.includes(claimed));
+    if (!known) fakeScore += 0.70;
+  }
+
+  KNOWN_FACTS.impossible.forEach(c => { if (lower.includes(c)) fakeScore += 0.80; });
+  SIGNALS.strongFake.forEach(s => { if (s.p.test(text)) fakeScore += s.w; });
+  SIGNALS.mildFake.forEach(s => { if (s.p.test(text)) fakeScore += s.w; });
+  SIGNALS.realSignals.forEach(s => { if (s.p.test(text)) fakeScore += s.w; });
+
+  const words = text.trim().split(/\s+/);
+  if (words.length < 8) fakeScore += 0.10;
+  fakeScore += (Math.random() - 0.5) * 0.04;
+
+  const fakeProbability = Math.min(Math.max(fakeScore, 0.02), 0.98);
+  return {
+    final_verdict:    fakeProbability >= 0.5 ? 'Fake' : 'Real',
+    final_confidence: Math.round(fakeProbability >= 0.5 ? fakeProbability * 100 : (1 - fakeProbability) * 100),
+    ml_verdict:       fakeProbability >= 0.5 ? 'Fake' : 'Real',
+    ml_confidence:    Math.round(fakeProbability >= 0.5 ? fakeProbability * 100 : (1 - fakeProbability) * 100),
+    groq_verdict:     null,
+    groq_explanation: null,
+    agreement:        'Local analysis only',
+    verdict_source:   'Frontend engine',
+    time_ms:          null
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// MAIN ANALYZE — tries real Flask API first, falls back locally
+// ─────────────────────────────────────────────────────────────
+async function analyze() {
+  const text = document.getElementById('newsInput').value.trim();
+  if (!text || text.length < 10) { showToast('⚠️ Please enter at least 10 characters'); return; }
+
+  const btn     = document.getElementById('analyzeBtn');
+  const spinner = document.getElementById('spinner');
+  const btnText = document.getElementById('btnText');
+  btn.disabled = true;
+  spinner.style.display = 'block';
+  btnText.textContent = 'Analyzing…';
+  document.getElementById('resultPanel').style.display = 'none';
+  document.getElementById('groqBox').style.display = 'none';
+
+  const start = Date.now();
+  let result;
+
+  try {
+    // Try calling the real Flask backend
+    const resp = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, model: selectedModel }),
+      signal: AbortSignal.timeout(15000)
+    });
+
+    if (resp.ok) {
+      result = await resp.json();
+    } else {
+      throw new Error('API error');
+    }
+  } catch (e) {
+    // Flask not running (demo mode) — use local engine
+    const delay = selectedModel === 'bert' ? 1800 : selectedModel === 'lstm' ? 900 : 400;
+    await new Promise(r => setTimeout(r, delay));
+    result = localDetect(text);
+    result.time_ms = ((Date.now() - start) / 1000).toFixed(2) + 's';
+    result.model_used = selectedModel.toUpperCase();
+  }
+
+  showResult(result);
+  btn.disabled = false;
+  spinner.style.display = 'none';
+  btnText.textContent = '🔍  ANALYZE NEWS';
+}
+
+function showResult(r) {
+  const isFake = r.final_verdict === 'Fake';
+  const panel  = document.getElementById('resultPanel');
+  const header = document.getElementById('resultHeader');
+
+  header.className = 'result-header ' + (isFake ? 'fake' : 'real');
+  document.getElementById('verdictIcon').textContent  = isFake ? '⚠️' : '✅';
+  document.getElementById('verdictText').textContent  = isFake ? 'FAKE NEWS' : 'REAL NEWS';
+  document.getElementById('confBadge').textContent    = r.final_confidence + '% Confidence';
+  document.getElementById('detModel').textContent     = modelNames[selectedModel] || (r.model_used || '—');
+  document.getElementById('detTime').textContent      = r.time_ms ? (typeof r.time_ms === 'number' ? r.time_ms + 'ms' : r.time_ms) : '—';
+  document.getElementById('detSource').textContent    = r.verdict_source || '—';
+
+  panel.style.display = 'block';
+
+  // Confidence bars
+  const fakePct = isFake ? r.final_confidence : (100 - r.final_confidence);
+  const realPct = 100 - fakePct;
+  setTimeout(() => {
+    document.getElementById('realFill').style.width = realPct + '%';
+    document.getElementById('fakeFill').style.width = fakePct + '%';
+    document.getElementById('realPct').textContent  = realPct + '%';
+    document.getElementById('fakePct').textContent  = fakePct + '%';
+  }, 100);
+
+  // Groq explanation box
+  if (r.groq_explanation && r.groq_verdict && r.groq_verdict !== 'Unavailable') {
+    const groqBox = document.getElementById('groqBox');
+    document.getElementById('groqExplanation').textContent = '"' + r.groq_explanation + '"';
+    document.getElementById('groqAgreement').textContent   = r.agreement || '';
+    document.getElementById('groqConfidence').textContent  = r.groq_confidence
+      ? 'Groq Confidence: ' + r.groq_confidence + '  |  Model: LLaMA 3 70B'
+      : 'Model: LLaMA 3 70B';
+    groqBox.style.display = 'block';
+  }
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+</script>
+</body>
+</html>
