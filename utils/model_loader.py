@@ -60,8 +60,8 @@ def load_lstm_model() -> dict:
         separately with pickle.
     """
     logger.info("Loading LSTM model …")
-    from tensorflow.keras.models import load_model  # lazy import — TF is heavy
-    lstm_model = load_model(_path("lstm_model.h5"))
+    from keras.models import load_model  # lazy import — TF is heavy
+    lstm_model = load_model(_path("lstm_model.h5"), compile=False)
     with open(_path("tokenizer.pkl"), "rb") as f:
         tokenizer = pickle.load(f)
     logger.info("LSTM model loaded ✓")

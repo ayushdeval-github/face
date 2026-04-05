@@ -71,7 +71,7 @@ def predict_lstm(text: str, cache: dict) -> tuple[int, float]:
         The final Dense(1, activation='sigmoid') outputs a single float in
         [0, 1] representing P(Fake).  We threshold at 0.5 to get a class.
     """
-    from tensorflow.keras.preprocessing.sequence import pad_sequences
+    from keras.preprocessing.sequence import pad_sequences
 
     lstm_model = cache["lstm_model"]
     tokenizer  = cache["lstm_tokenizer"]
